@@ -1,15 +1,15 @@
 # :ocean: :shell: SeaShell
 
-![seashell demo](assets/cshell_demo.gif)
 
 cshell is an implementation of the original UNIX shell in C. It uses the POSIX API to implement a lot of the same functionality of Ken Thompson's first shell.
 
-The API calls predominantly used are <code>read</code>, <code>write</code>, <code>fork</code>, <code>exec</code>, and <code>wait</code> to name a few.
+The API calls predominantly used are `read`, `write`, `fork`, `exec`
+, and `wait` to name a few.
 
 
 ## :feet: Challenges
 
-Handling multiple commands in the same input (dealing with logical seperators) was a large challenge. We overcame this by building a command queue that could be built based on each input. Scanning for seperators that would split the command. This way we could handle flags and more for our commands at the same time. 
+Handling multiple commands in the same input (dealing with logical separators) was a large challenge. We overcame this by building a command queue that could be built based on each input. Scanning for separators that would split the command. This way we could handle flags and more for our commands at the same time. 
 
 Using a queue also allowed us to easily check commands for success and failure, a doubly linked list queue could have been a possible improvement allowing for traversal in both directions. However, we ended up just setting flags as we dequeued the elements.
 
@@ -19,7 +19,7 @@ I am still overall very happy with the net result of this project as I learned t
 
 ## :running: Getting Started
 
-* [Ubuntu 14.04 LTS](http://releases.ubuntu.com/14.04/) - Operating system reqd.
+* [Ubuntu 20.04 LTS](http://releases.ubuntu.com/20.04/) - Operating system reqd.
 
 * [GCC 4.8.4](https://gcc.gnu.org/gcc-4.8/) - Compiler used
 
@@ -40,12 +40,12 @@ $ sudo apt-get install git
 Clone the repository into a new directory
 
 ```
-$ git clone https://github.com/BennettDixon/simple_shell.git
+$ git clone https://github.com/krisbobo/simple_shell.git
 ```
 Compile with the following:
 
 ```
-gcc -Wall -Werror -Wextra -pedantic *.c -o seashell
+gcc -Wall -Werror -Wextra -pedantic -std=gnu89 *.c -o seashell
 ```
 
 
@@ -120,18 +120,11 @@ $ cd Betty; ./install.sh
 
 ## :blue_book: Authors
 
-* **Connor Brereton** - [@ConnorBrereton](https://github.com/ConnorBrereton/printf)
+* **Christian Kiyong** - [krisbobo](https://github.com/krisbobo)
 
-* **Bennett Dixon** - [@BennettDixon](https://github.com/BennettDixon)
-
-
-
-## :mag: License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
+* **Marie-Parisius** - [Parisius](https://github.com/Parisius)
 
 
 ## :mega: Acknowledgments
-* Holberton School (providing guidance)
+* ALX (providing guidance)
 * Stack Overflow (help on various memory errors (not leaks))
