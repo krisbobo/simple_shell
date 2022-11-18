@@ -1,143 +1,135 @@
 #ifndef _SHELL_H_
 #define _SHELL_H_
+
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <stdlib.h>
 #include <unistd.h>
-/* delimeter macros */
-#define NORM_DELIMS " \t\a\r\n"
-#define PATH_DELIMS ":"
+#include <errno.h>
+#include <stdio.h>
 
-/* external environmental variable array */
+#define END_OF_FILE -2
+#define EXIT -3
+
+/* Global environemnt */
 extern char **environ;
+/* Global program name */
+char *name;
+/* Global history counter */
+int hist;
 
 /**
- * struct command_s - Structure of each node
- *
- * @prev_valid: Check if previous command
- * was successful
- *
- * @separator: Used for character that
- * that separates each command
- *
- * @command: Points to the first char
- * in the stream
- *
- * @next: Address of next node
- *
+ * struct list_s - A new struct type defining a linked list.
+ * @dir: A directory path.
+ * @next: A pointer to another struct list_s.
  */
-typedef struct command_s
+typedef struct list_s
 {
-	int prev_valid;
-
-	char separator;
-	char **command;
-	struct command_s *next;
-} command_t;
+	char *dir;
+	struct list_s *next;
+} list_t;
 
 /**
- * struct queue_s - Structure of queue
- *
- * @front: Pointer to the first node
- *
- * @rear: Pointer to the front+1 node
- *
+ * struct builtin_s - A new struct type defining builtin commands.
+ * @name: The name of the builtin command.
+ * @f: A function pointer to the builtin command's function.
  */
-
-typedef struct queue_s
+typedef struct builtin_s
 {
-	command_t *front, *rear;
-} queue_t;
+	char *name;
+	int (*f)(char **argv, char **front);
+} builtin_t;
 
 /**
- * struct history_s - Structure of history queue
- *
- * @command: Holds the command from getline()
- *
- * @priority_number: Holds the number coorelated
- * to the command input order
- *
- * @next: Pointer to the next node
- *
+ * struct alias_s - A new struct defining aliases.
+ * @name: The name of the alias.
+ * @value: The value of the alias.
+ * @next: A pointer to another struct alias_s.
  */
-
-typedef struct history_s
+typedef struct alias_s
 {
-	char *command;
+	char *name;
+	char *value;
+	struct alias_s *next;
+} alias_t;
 
-	int priority_number;
-	struct history_s *next;
-} history_t;
+/* Global aliases linked list */
+alias_t *aliases;
 
-/**
- * struct his_q_s - Structure of queue
- *
- * @front: Pointer to the first node
- *
- * @rear: Pointer to the front+1 node
- *
- */
+/* Main Helpers */
+ssize_t _getline(char **lineptr, size_t *n, FILE *stream);
+void *_realloc(void *ptr, unsigned int old_size, unsigned int new_size);
+char **_strtok(char *line, char *delim);
+char *get_location(char *command);
+list_t *get_path_dir(char *path);
+int execute(char **args, char **front);
+void free_list(list_t *head);
+char *_itoa(int num);
 
-typedef struct his_q_s
-{
-	history_t *front, *rear;
-} his_q_t;
+/* Input Helpers */
+void handle_line(char **line, ssize_t read);
+void variable_replacement(char **args, int *exe_ret);
+char *get_args(char *line, int *exe_ret);
+int call_args(char **args, char **front, int *exe_ret);
+int run_args(char **args, char **front, int *exe_ret);
+int handle_args(int *exe_ret);
+int check_args(char **args);
+void free_args(char **args, char **front);
+char **replace_aliases(char **args);
 
-/* main functionality */
-int start_shell(char **environ, char *exec_name);
-queue_t *parse_string(char *input_str);
-int execute_commands(his_q_t *his_q, queue_t *command_q,
-			char *envp[], char *exec_name);
-char *get_file_path(char *filename, char *envp[]);
+/* String functions */
+int _strlen(const char *s);
+char *_strcat(char *dest, const char *src);
+char *_strncat(char *dest, const char *src, size_t n);
+char *_strcpy(char *dest, const char *src);
+char *_strchr(char *s, char c);
+int _strspn(char *s, char *accept);
+int _strcmp(char *s1, char *s2);
+int _strncmp(const char *s1, const char *s2, size_t n);
 
-/* free memory */
-void free_token_list(char **tokens);
-void free_command_queue(queue_t *command_q);
-void free_command(command_t *command);
+/* Builtins */
+int (*get_builtin(char *command))(char **args, char **front);
+int shellby_exit(char **args, char **front);
+int shellby_env(char **args, char __attribute__((__unused__)) **front);
+int shellby_setenv(char **args, char __attribute__((__unused__)) **front);
+int shellby_unsetenv(char **args, char __attribute__((__unused__)) **front);
+int shellby_cd(char **args, char __attribute__((__unused__)) **front);
+int shellby_alias(char **args, char __attribute__((__unused__)) **front);
+int shellby_help(char **args, char __attribute__((__unused__)) **front);
 
-/* build the queue of commands */
-command_t *create_command(char separator, char **command);
-char **strtow(char *str, char *delims);
-int is_delim(char ch, char *delims);
-queue_t *create_queue();
+/* Builtin Helpers */
+char **_copyenv(void);
+void free_env(void);
+char **_getenv(const char *var);
 
-/* using our queue */
-int enqueue(queue_t *q, char separator, char **command);
-command_t *dequeue(queue_t *q);
-void print_queue(queue_t *q);
+/* Error Handling */
+int create_error(char **args, int err);
+char *error_env(char **args);
+char *error_1(char **args);
+char *error_2_exit(char **args);
+char *error_2_cd(char **args);
+char *error_2_syntax(char **args);
+char *error_126(char **args);
+char *error_127(char **args);
 
-/* history queue */
-history_t *create_history_t(char *command, int set_p_no);
-void free_history_node(history_t *node);
-void free_history_queue(his_q_t *q);
+/* Linkedlist Helpers */
+alias_t *add_alias_end(alias_t **head, char *name, char *value);
+void free_alias_list(alias_t *head);
+list_t *add_node_end(list_t **head, char *dir);
+void free_list(list_t *head);
 
-/* history enqueue/dequeue */
-his_q_t *get_history();
-his_q_t *create_h_queue();
-int h_enqueue(his_q_t *q, char *command);
-history_t *h_dequeue(his_q_t *q);
-void write_h_queue(his_q_t *q, int fd);
+void help_all(void);
+void help_alias(void);
+void help_cd(void);
+void help_exit(void);
+void help_help(void);
+void help_env(void);
+void help_setenv(void);
+void help_unsetenv(void);
+void help_history(void);
 
-/* writing/loading history file */
-void write_queue_to_file(his_q_t *q, char **env);
-
-/* custom functions for custom commands */
-void exit_shell(his_q_t *his_q, queue_t *q, int status, char **env);
-int print_env(char *envp[]);
-
-/* handling signals */
-void signal_handler(int sig_no);
-int register_signal_handlers(void);
-
-/* custom stdlib */
-int _atoi(char *str);
-int _strlen(char *str);
-char *get_int(int num);
-char *_getenv(char *env_name, char **environ);
-char *combine_path(char *dir, char *file);
-
-/* print errors */
-void print_no_file_error(char *executable_name);
-void print_perm_denied(char *executable_name);
-void print_signal_reg_error(void);
-void print_prompt(void);
-void print_newline(void);
-
+int proc_file_commands(char *file_path, int *exe_ret);
 #endif /* _SHELL_H_ */

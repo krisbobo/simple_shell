@@ -1,122 +1,285 @@
-# :ocean: :shell: SeaShell
+# shellby - Simple Shell :shell:
 
+A simple UNIX command interpreter written as part of the low-level programming and algorithm track in Alx Program.
 
-cshell is an implementation of the original UNIX shell in C. It uses the POSIX API to implement a lot of the same functionality of Ken Thompson's first shell.
+## Description :speech_balloon:
 
-The API calls predominantly used are `read`, `write`, `fork`, `exec`
-, and `wait` to name a few.
+**Shellby** is a simple UNIX command language interpreter that reads commands from either a file or standard input and executes them.
 
+### Invocation :running:
 
-## :feet: Challenges
+Usage: **shellby** [filename]
 
-Handling multiple commands in the same input (dealing with logical separators) was a large challenge. We overcame this by building a command queue that could be built based on each input. Scanning for separators that would split the command. This way we could handle flags and more for our commands at the same time. 
-
-Using a queue also allowed us to easily check commands for success and failure, a doubly linked list queue could have been a possible improvement allowing for traversal in both directions. However, we ended up just setting flags as we dequeued the elements.
-
-Some of the code could certainly be refactored to be more generic, for instance both history queues and command queues have entirely seperate data structures and functions, this could certainly be improved upon. As well as some of the ways traversal of the queues was handled.
-
-I am still overall very happy with the net result of this project as I learned tons about memory management, string parsing, and process forking.
-
-## :running: Getting Started
-
-* [Ubuntu 20.04 LTS](http://releases.ubuntu.com/20.04/) - Operating system reqd.
-
-* [GCC 4.8.4](https://gcc.gnu.org/gcc-4.8/) - Compiler used
-
-
-## :warning: Prerequisites
-
-* Must have `git` installed
-
-* Must have repository cloned
+To invoke **shellby**, compile all `.c` files in the repository and run the resulting executable:
 
 ```
-$ sudo apt-get install git
+gcc *.c -o shellby
+./shellby
 ```
 
+**Shellby** can be invoked both interactively and non-interactively. If **shellby** is invoked with standard input not connected to a terminal, it reads and executes received commands in order.
 
-## :arrow_down: Installing
-
-Clone the repository into a new directory
-
+Example:
 ```
-$ git clone https://github.com/krisbobo/simple_shell.git
-```
-Compile with the following:
-
-```
-gcc -Wall -Werror -Wextra -pedantic -std=gnu89 *.c -o seashell
+$ echo "echo 'hello'" | ./shellby
+'hello'
+$
 ```
 
+If **shellby** is invoked with standard input connected to a terminal (determined by [isatty](https://linux.die.net/man/3/isatty)(3)), an *interactive* shell is opened. When executing interactively, **shellby** displays the prompt `$ ` when it is ready to read a command.
 
-## :clipboard: Examples
-
-Using in Interactive && Non-Interactive Mode
-
-![seashell modes demo](assets/cshell_demo_modes.gif)
-
-Using `$PATH` to find custom commands (executables)
-
+Example:
 ```
-> echo dog
-dog
-> /bin/echo dog
-dog
+$./shellby
+$
 ```
 
-Using `&&` or `||` logic to run commands based on success
+Alternatively, if command line arguments are supplied upon invocation, **shellby** treats the first argument as a file from which to read commands. The supplied file should contain one command per line. **Shellby** runs each of the commands contained in the file in order before exiting.
 
+Example:
 ```
-> ls -l /asdfasdf && echo this won't print!
-ls: cannot access /asdfasdf: No such file or directory 
-> ls -l /asdfasdf || echo this will  print!
-ls: cannot access /asdfasdf: No such file or directory
-this will print!
-```
-
-Using `;` to seperate commands and run regardless of success
-
-```
-> ls -l /asdfasdf ; echo printme! ; wc -l main.c
-ls: cannot access /asdfasdf: No such file or directory
-printme!
- 21 316 main.c
+$ cat test
+echo 'hello'
+$ ./shellby test
+'hello'
+$
 ```
 
-Using `exit [status]` to exit the process with status number
+### Environment :deciduous_tree:
+
+Upon invocation, **shellby** receives and copies the environment of the parent process in which it was executed. This environment is an array of *name-value* strings describing variables in the format *NAME=VALUE*. A few key environmental variables are:
+
+#### HOME
+The home directory of the current user and the default directory argument for the **cd** builtin command.
 
 ```
-> exit 102
-vagrant@vagrant-ubuntu-trusty-64:~/simple_shell$ echo $?
-102
+$ echo "echo $HOME" | ./shellby
+/home/vagrant
 ```
 
-Using `env` to print the environmental variables
+#### PWD
+The current working directory as set by the **cd** command.
 
 ```
-> env
-XDG_SESSION_ID=30
-TERM=ansi
-SHELL=/home/vagrant/simple_shell/seashell
+$ echo "echo $PWD" | ./shellby
+/home/vagrant/alx/simple_shell
+```
+
+#### OLDPWD
+The previous working directory as set by the **cd** command.
+
+```
+$ echo "echo $OLDPWD" | ./shellby
+/home/vagrant/alx/printf
+```
+
+#### PATH
+A colon-separated list of directories in which the shell looks for commands. A null directory name in the path (represented by any of two adjacent colons, an initial colon, or a trailing colon) indicates the current directory.
+
+```
+$ echo "echo $PATH" | ./shellby
+/home/vagrant/.cargo/bin:/home/vagrant/.local/bin:/home/vagrant/.rbenv/plugins/ruby-build/bin:/home/vagrant/.rbenv/shims:/home/vagrant/.rbenv/bin:/home/vagrant/.nvm/versions/node/v10.15.3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/vagrant/.cargo/bin:/home/vagrant/workflow:/home/vagrant/.local/bin
+```
+
+### Command Execution :hocho:
+
+After receiving a command, **shellby** tokenizes it into words using `" "` as a delimiter. The first word is considered the command and all remaining words are considered arguments to that command. **Shellby** then proceeds with the following actions:
+1. If the first character of the command is neither a slash (`\`) nor dot (`.`), the shell searches for it in the list of shell builtins. If there exists a builtin by that name, the builtin is invoked.
+2. If the first character of the command is none of a slash (`\`), dot (`.`), nor builtin, **shellby** searches each element of the **PATH** environmental variable for a directory containing an executable file by that name.
+3. If the first character of the command is a slash (`\`) or dot (`.`) or either of the above searches was successful, the shell executes the named program with any remaining given arguments in a separate execution environment.
+
+### Exit Status :wave:
+
+**Shellby** returns the exit status of the last command executed, with zero indicating success and non-zero indicating failure.
+
+If a command is not found, the return status is `127`; if a command is found but is not executable, the return status is 126.
+
+All builtins return zero on success and one or two on incorrect usage (indicated by a corresponding error message).
+
+### Signals :exclamation:
+
+While running in interactive mode, **shellby** ignores the keyboard input `Ctrl+c`. Alternatively, an input of end-of-file (`Ctrl+d`) will exit the program.
+
+User hits `Ctrl+d` in the third line.
+```
+$ ./shellby
+$ ^C
+$ ^C
+$
+```
+
+### Variable Replacement :heavy_dollar_sign:
+
+**Shellby** interprets the `$` character for variable replacement.
+
+#### $ENV_VARIABLE
+`ENV_VARIABLE` is substituted with its value.
+
+Example:
+```
+$ echo "echo $PWD" | ./shellby
+/home/vagrant/alx/simple_shell
+```
+
+#### $?
+`?` is substitued with the return value of the last program executed.
+
+Example:
+```
+$ echo "echo $?" | ./shellby
+0
+```
+
+#### $$
+The second `$` is substitued with the current process ID.
+
+Example:
+```
+$ echo "echo $$" | ./shellby
+6494
+```
+
+### Comments :hash:
+
+**Shellby** ignores all words and characters preceeded by a `#` character on a line.
+
+Example:
+```
+$ echo "echo 'hello' #this will be ignored!" | ./shellby
+'hello'
+```
+
+### Operators :guitar:
+
+**Shellby** specially interprets the following operator characters:
+
+#### ; - Command separator
+Commands separated by a `;` are executed sequentially.
+
+Example:
+```
+$ echo "echo 'hello' ; echo 'world'" | ./shellby
+'hello'
+'world'
+```
+
+#### && - AND logical operator
+`command1 && command2`: `command2` is executed if, and only if, `command1` returns an exit status of zero.
+
+Example:
+```
+$ echo "error! && echo 'hello'" | ./shellby
+./shellby: 1: error!: not found
+$ echo "echo 'all good' && echo 'hello'" | ./shellby
+'all good'
+'hello'
+```
+
+#### || - OR logical operator
+`command1 || command2`: `command2` is executed if, and only if, `command1` returns a non-zero exit status.
+
+Example:
+```
+$ echo "error! || echo 'but still runs'" | ./shellby
+./shellby: 1: error!: not found
+'but still runs'
+```
+
+The operators `&&` and `||` have equal precedence, followed by `;`.
+
+### Shellby Builtin Commands :nut_and_bolt:
+
+#### cd
+  * Usage: `cd [DIRECTORY]`
+  * Changes the current directory of the process to `DIRECTORY`.
+  * If no argument is given, the command is interpreted as `cd $HOME`.
+  * If the argument `-` is given, the command is interpreted as `cd $OLDPWD` and the pathname of the new working directory is printed to standad output.
+  * If the argument, `--` is given, the command is interpreted as `cd $OLDPWD` but the pathname of the new working directory is not printed.
+  * The environment variables `PWD` and `OLDPWD` are updated after a change of directory.
+
+Example:
+```
+$ ./shellby
+$ pwd
+/home/vagrant/alx/simple_shell
+$ cd ../
+$ pwd
+/home/vagrant/alx
+$ cd -
+$ pwd
+/home/vagrant/alx/simple_shell
+```
+
+#### alias
+  * Usage: `alias [NAME[='VALUE'] ...]`
+  * Handles aliases.
+  * `alias`: Prints a list of all aliases, one per line, in the form `NAME='VALUE'`.
+  * `alias NAME [NAME2 ...]`: Prints the aliases `NAME`, `NAME2`, etc. one per line, in the form `NAME='VALUE'`.
+  * `alias NAME='VALUE' [...]`: Defines an alias for each `NAME` whose `VALUE` is given. If `name` is already an alias, its value is replaced with `VALUE`.
+
+Example:
+```
+$ ./shellby
+$ alias show=ls
+$ show
+AUTHORS            builtins_help_2.c  errors.c         linkedlist.c        shell.h       test
+README.md          env_builtins.c     getline.c        locate.c            shellby
+alias_builtins.c   environ.c          helper.c         main.c              split.c
+builtin.c          err_msgs1.c        helpers_2.c      man_1_simple_shell  str_funcs1.c
+builtins_help_1.c  err_msgs2.c        input_helpers.c  proc_file_comm.c    str_funcs2.c
+```
+
+#### exit
+  * Usage: `exit [STATUS]`
+  * Exits the shell.
+  * The `STATUS` argument is the integer used to exit the shell.
+  * If no argument is given, the command is interpreted as `exit 0`.
+
+Example:
+```
+$ ./shellby
+$ exit
+```
+
+#### env
+  * Usage: `env`
+  * Prints the current environment.
+
+Example:
+```
+$ ./shellby
+$ env
+NVM_DIR=/home/vagrant/.nvm
 ...
-...
-```
-## :books: Coding Style Tests
-
-Strictly followed `Betty` style guide. To install
-
-```
-$ git clone https://github.com/holbertonschool/Betty.git
-
-$ cd Betty; ./install.sh
 ```
 
+#### setenv
+  * Usage: `setenv [VARIABLE] [VALUE]`
+  * Initializes a new environment variable, or modifies an existing one.
+  * Upon failure, prints a message to `stderr`.
 
-## :pencil: Version
+Example:
+```
+$ ./shellby
+$ setenv NAME Poppy
+$ echo $NAME
+Poppy
+```
 
-* 0.1.0
+#### unsetenv
+  * Usage: `unsetenv [VARIABLE]`
+  * Removes an environmental variable.
+  * Upon failure, prints a message to `stderr`.
 
+Example:
+```
+$ ./shellby
+$ setenv NAME Poppy
+$ unsetenv NAME
+$ echo $NAME
 
+$
+```
 
 ## :blue_book: Authors
 
@@ -124,7 +287,16 @@ $ cd Betty; ./install.sh
 
 * **Marie-Parisius** - [Parisius](https://github.com/Parisius)
 
+## License :lock:
 
-## :mega: Acknowledgments
-* ALX (providing guidance)
-* Stack Overflow (help on various memory errors (not leaks))
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+## Acknowledgements :pray:
+
+**Shellby** emulates basic functionality of the **sh** shell. This README borrows form the Linux man pages [sh(1)](https://linux.die.net/man/1/sh) and [dash(1)](https://linux.die.net/man/1/dash).
+
+This project was written as part of the curriculum for Alx Program. Alx Program is a campus-based full-stack software engineering program that prepares students for careers in the tech industry using project-based peer learning. For more information, visit [this link](https://www.alxafrica.com/).
+
+<p align="center">
+  <img src="https://www.alxafrica.com/wp-content/uploads/2022/01/header-logo.png" alt="Alx Africa logo">
+</p>
